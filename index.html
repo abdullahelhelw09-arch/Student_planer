@@ -65,4 +65,11 @@ function makePlan(){let a=+avail.value||180,items=[...state.homework.filter(x=>!
 function tick(){let e=document.getElementById("clock");if(e)e.textContent=now()}
 setInterval(tick,1000);render();
 </script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+</script>
 </body></html>
