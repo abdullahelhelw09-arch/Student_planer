@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#147b78">
+<title>مخطط الطالب</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;background:#f7f7f2;color:#203536}
+header{padding:20px 18px 8px;display:flex;justify-content:space-between;align-items:center}h1{margin:0;font-size:25px}
+main{padding:10px 16px 95px;max-width:720px;margin:auto}.hero{background:#147b78;color:#fff;border-radius:28px;padding:24px;margin:8px 0 18px}
+.clock{font-size:42px;font-weight:800}.muted{opacity:.75}.progress{height:9px;background:#ffffff55;border-radius:9px;overflow:hidden;margin-top:16px}.progress>i{display:block;height:100%;background:#f4cf80;width:0}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{background:#fff;border:1px solid #e6e8e3;border-radius:20px;padding:16px;margin:12px 0}.tile{background:#eee8dc;border:0;border-radius:18px;padding:18px;text-align:right;font-size:16px;cursor:pointer}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;display:flex;overflow:auto;z-index:5}nav button{flex:1;min-width:90px;background:none;border:0;padding:12px 7px;color:#526465;font-size:12px}nav button.active{color:#147b78;font-weight:800}
+button.primary{background:#147b78;color:#fff;border:0;border-radius:14px;padding:12px 18px;font-size:15px;cursor:pointer}
+input,select,textarea{width:100%;padding:12px;border:1px solid #d9ded9;border-radius:12px;margin:5px 0 10px;background:#fff;font:inherit}label{font-size:13px}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between}.item{padding:12px 0;border-bottom:1px solid #eee}.item:last-child{border-bottom:0}.badge{display:inline-block;padding:4px 9px;border-radius:20px;background:#eee8dc;font-size:12px}.danger{color:#b84d4d}.empty{text-align:center;padding:28px;color:#738080}
+</style>
+</head>
+<body>
+<header><h1>مخطط الطالب</h1><span id="date"></span></header>
+<main id="app"></main>
+<nav id="nav"></nav>
+<script>
+const tabs=[
+["home","🏠","الرئيسية"],["study","📚","المذاكرة"],["homework","📝","الواجبات"],
+["schedule","📅","الجدول"],["prayer","🕌","الصلاة"],["focus","⏱️","التركيز"],
+["stats","📊","الإحصائيات"],["planner","🤖","المخطط الذكي"]
+];
+let state=JSON.parse(localStorage.getItem("studentPlanner")||'{"subjects":[],"sessions":[],"homework":[],"prayer":{}}');
+let current="home", timer=null, remaining=1500;
+function save(){localStorage.setItem("studentPlanner",JSON.stringify(state))}
+function fmtDate(){return new Date().toLocaleDateString("ar-EG",{weekday:"long",day:"numeric",month:"long"})}
+function renderNav(){nav.innerHTML=tabs.map(t=>`<button class="${current==t[0]?'active':''}" onclick="go('${t[0]}')">${t[1]}<br>${t[2]}</button>`).join("")}
+function go(x){current=x;render()}
+function render(){
+date.textContent=fmtDate();renderNav();
+const pages={home:homePage,study:studyPage,homework:hwPage,schedule:schedulePage,prayer:prayerPage,focus:focusPage,stats:statsPage,planner:plannerPage};
+app.innerHTML=pages[current](); tick();
+}
+function now(){return new Date().toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"})}
+function homePage(){
+let done=state.homework.filter(x=>x.done).length+state.sessions.filter(x=>x.done).length,total=state.homework.length+state.sessions.length,p=total?Math.round(done/total*100):0;
+return `<section class=hero><div class=muted>الوقت الحالي</div><div class=clock id=clock>${now()}</div><div>خطة اليوم</div><div class=progress><i style="width:${p}%"></i></div><div class=muted>${p}% إنجاز اليوم</div></section>
+<div class=grid><button class=tile onclick="go('study')">📚<br>المذاكرة</button><button class=tile onclick="go('homework')">📝<br>الواجبات</button><button class=tile onclick="go('schedule')">📅<br>الجدول</button><button class=tile onclick="go('prayer')">🕌<br>الصلاة</button></div>
+<div class=card><h3>أهم ما لديك اليوم</h3>${todayItems()||'<div class=empty>لا توجد مهام بعد. أضف أول مهمة أو جلسة مذاكرة.</div>'}</div>`;
+}
+function todayItems(){let d=new Date().toISOString().slice(0,10),a=[...state.homework.filter(x=>x.date==d),...state.sessions.filter(x=>x.date==d)];return a.slice(0,6).map(x=>`<div class=item><div class=row><b>${x.title||x.topic||"جلسة مذاكرة"}</b><span class=badge>${x.done?"مكتمل":"قادم"}</span></div><small>${x.subject||""} ${x.time||""}</small></div>`).join("")}
+function studyPage(){return `<div class=card><h2>📚 المذاكرة</h2><label>المادة</label><input id=sSub placeholder="مثال: الرياضيات"><label>الموضوع</label><input id=sTopic placeholder="موضوع المذاكرة"><label>التاريخ</label><input id=sDate type=date><label>الوقت</label><input id=sTime type=time><label>المدة بالدقائق</label><input id=sDur type=number value=50><button class=primary onclick="addStudy()">إضافة جلسة</button></div><div class=card><h3>جلسات المذاكرة</h3>${state.sessions.length?state.sessions.map((x,i)=>`<div class=item><div class=row><b>${x.subject}</b><button onclick="toggleSession(${i})">${x.done?"↩️":"✅"}</button></div>${x.topic} · ${x.date||"بدون تاريخ"} · ${x.duration} دقيقة</div>`).join(""):'<div class=empty>لا توجد جلسات مذاكرة بعد.</div>'}</div>`}
+function addStudy(){let x={subject:sSub.value.trim(),topic:sTopic.value.trim(),date:sDate.value,time:sTime.value,duration:+sDur.value||50,done:false};if(!x.subject||!x.topic)return alert("أدخل المادة والموضوع");state.sessions.push(x);save();render()}
+function toggleSession(i){state.sessions[i].done=!state.sessions[i].done;save();render()}
+function hwPage(){return `<div class=card><h2>📝 الواجبات</h2><label>اسم الواجب</label><input id=hTitle><label>المادة</label><input id=hSub><label>موعد التسليم</label><input id=hDate type=date><label>الوقت</label><input id=hTime type=time><label>الأولوية</label><select id=hPri><option>منخفضة</option><option selected>متوسطة</option><option>عالية</option></select><label>المدة المتوقعة بالدقائق</label><input id=hDur type=number value=30><button class=primary onclick="addHW()">إضافة واجب</button></div><div class=card><h3>واجباتي</h3>${state.homework.length?state.homework.map((x,i)=>`<div class=item><div class=row><b>${x.title}</b><button onclick="toggleHW(${i})">${x.done?"↩️":"✅"}</button></div><small>${x.subject} · ${x.date||"بدون موعد"} · ${x.priority}</small></div>`).join(""):'<div class=empty>لا توجد واجبات بعد.</div>'}</div>`}
+function addHW(){let x={title:hTitle.value.trim(),subject:hSub.value.trim(),date:hDate.value,time:hTime.value,priority:hPri.value,duration:+hDur.value||30,done:false};if(!x.title)return alert("أدخل اسم الواجب");state.homework.push(x);save();render()}
+function toggleHW(i){state.homework[i].done=!state.homework[i].done;save();render()}
+function schedulePage(){let days=["السبت","الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"];return `<div class=card><h2>📅 الجدول الأسبوعي</h2><p class=muted>الخطة تعتمد على البيانات التي تضيفها أنت.</p></div>`+days.map(d=>`<div class=card><h3>${d}</h3><div class=empty>أضف جلسات أو واجبات لهذا اليوم من الأقسام السابقة.</div></div>`).join("")}
+function prayerPage(){return `<div class=card><h2>🕌 الصلاة</h2><p>مواقيت الصلاة تحتاج تحديد الموقع أو إدخال المدينة.</p><label>المدينة</label><input id=city placeholder="مثال: القاهرة"><button class=primary onclick="alert('سيتم استخدام المدينة لإعداد المواقيت عند إضافة خدمة مواقيت الصلاة.')">حفظ الموقع</button><div class=card><b>الفجر</b><br><span class=muted>—</span></div><div class=card><b>الظهر</b><br><span class=muted>—</span></div><div class=card><b>العصر</b><br><span class=muted>—</span></div><div class=card><b>المغرب</b><br><span class=muted>—</span></div><div class=card><b>العشاء</b><br><span class=muted>—</span></div></div>`}
+function focusPage(){return `<div class=card><h2>⏱️ Focus Mode</h2><div class=clock id=timer>${Math.floor(remaining/60).toString().padStart(2,"0")}:${(remaining%60).toString().padStart(2,"0")}</div><div class=grid><button class=tile onclick="setTimer(25)">25 دقيقة</button><button class=tile onclick="setTimer(50)">50 دقيقة</button></div><br><button class=primary onclick="startTimer()">بدء</button> <button class=tile onclick="stopTimer()">إيقاف</button><p class=muted>اختر جلسة التركيز ثم ابدأ المذاكرة.</p></div>`}
+function setTimer(m){remaining=m*60;render()}
+function startTimer(){if(timer)return;timer=setInterval(()=>{remaining--;if(remaining<=0){stopTimer();alert("انتهت جلسة التركيز!")}let e=document.getElementById("timer");if(e)e.textContent=`${Math.floor(remaining/60).toString().padStart(2,"0")}:${(remaining%60).toString().padStart(2,"0")}`},1000)}
+function stopTimer(){clearInterval(timer);timer=null}
+function statsPage(){let mins=state.sessions.reduce((a,x)=>a+(+x.duration||0),0),doneH=state.sessions.filter(x=>x.done).length,hw=state.homework.filter(x=>x.done).length,pct=(state.sessions.length+state.homework.length)?Math.round((doneH+hw)/(state.sessions.length+state.homework.length)*100):0;return `<div class=card><h2>📊 الإحصائيات</h2><h3>${(mins/60).toFixed(1)} ساعة مذاكرة</h3><p>${state.sessions.length} جلسة مذاكرة</p><p>${hw} واجب مكتمل من ${state.homework.length}</p><p>نسبة الإنجاز: <b>${pct}%</b></p></div>`}
+function plannerPage(){return `<div class=card><h2>🤖 المخطط الذكي</h2><p>أدخل وقتك المتاح وسأبني لك اقتراحًا اعتمادًا على الواجبات وجلسات المذاكرة التي أضفتها.</p><label>الوقت المتاح اليوم بالدقائق</label><input id=avail type=number value=180><button class=primary onclick="makePlan()">إنشاء خطة اليوم</button><div id=plan></div></div>`}
+function makePlan(){let a=+avail.value||180,items=[...state.homework.filter(x=>!x.done),...state.sessions.filter(x=>!x.done)];let out=items.slice(0,10).map(x=>{let d=Math.min(+x.duration||30,a);a-=d;return `<div class=item>⏰ ${d} دقيقة — <b>${x.title||x.topic}</b> ${x.subject||""}</div>`}).join("");plan.innerHTML=out||'<div class=empty>أضف واجبات أو جلسات مذاكرة أولًا.</div>'}
+function tick(){let e=document.getElementById("clock");if(e)e.textContent=now()}
+setInterval(tick,1000);render();
+</script>
+</body></html>

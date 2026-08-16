@@ -1,0 +1,11 @@
+{
+  "name": "مخطط الطالب",
+  "short_name": "مخطط الطالب",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f7f7f2",
+  "theme_color": "#147b78",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": []
+}
